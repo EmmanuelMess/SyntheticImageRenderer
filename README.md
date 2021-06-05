@@ -14,7 +14,7 @@ configurator.imagesConfigurations.emplace_back(SingleImageConfiguration {
     .outputPath = "../rendered.png", //image name
     .width = 250, //image width
     .height = 250, //image height
-    .randomnessProvider = [&generator] (const Ogre::Vector3& point) { 
+    .randomnessProviderPosition = [&generator] (const Ogre::Vector3& point) { 
         // Provides a random variation on a point
         // This is for moving the camera a bit
         std::normal_distribution<Ogre::Real> distributionX(point.x, 25.0);
@@ -25,6 +25,11 @@ configurator.imagesConfigurations.emplace_back(SingleImageConfiguration {
             distributionY(generator),
             distributionZ(generator)
         );
-    }
+    },
+    .randomnessProviderRotation = [&generator] () {
+        // Provides a random rotation for the camera
+        std::normal_distribution<Ogre::Real> distributionAngle(0, 10);
+        return Ogre::Degree(distributionAngle(generator));
+    },
 });
 ```

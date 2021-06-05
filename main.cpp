@@ -52,7 +52,8 @@ struct SingleImageConfiguration {
 	const std::string outputPath = "../rendered.png";
 	const Ogre::uint32 width;
 	const Ogre::uint32 height;
-	const std::function< Ogre::Vector3 (const Ogre::Vector3& point) > randomnessProvider = [] (const Ogre::Vector3& point) { return point; };
+	const std::function< Ogre::Vector3 (const Ogre::Vector3& point) > randomnessProviderPosition = [] (const Ogre::Vector3& point) { return point; };
+	const std::function< Ogre::Radian () > randomnessProviderRotation = [] () { return Ogre::Radian(); };
 };
 
 struct ProcessConfigurator {
@@ -61,6 +62,7 @@ struct ProcessConfigurator {
 
 void create(const ProcessConfigurator& configurator) {
 	const auto initialCameraPosition = Ogre::Vector3(0, 0, 15);
+	const auto lookAtVector = Ogre::Vector3(0, 0, -1);
 
 	auto app = SyntheticImageGenerator();
 	app.initApp();
@@ -82,7 +84,7 @@ void create(const ProcessConfigurator& configurator) {
 	// also need to tell where we are
 	Ogre::SceneNode *camNode = scnMgr->getRootSceneNode()->createChildSceneNode();
 	camNode->setPosition(initialCameraPosition);
-	camNode->lookAt(Ogre::Vector3(0, 0, -1), Ogre::Node::TS_PARENT);
+	camNode->lookAt(lookAtVector, Ogre::Node::TS_PARENT);
 
 	// create the camera
 	Ogre::Camera *cam = scnMgr->createCamera("myCam");
@@ -139,22 +141,28 @@ void create(const ProcessConfigurator& configurator) {
 			loadLocalMesh(meshName, image.inputMesh);
 		}
 
-		auto newPos = image.randomnessProvider(camNode->getPosition());
+		auto newPos = image.randomnessProviderPosition(camNode->getPosition());
 		camNode->setPosition(newPos);
-		camNode->lookAt(Ogre::Vector3(0, 0, -1), Ogre::Node::TS_PARENT);
+
+		auto newRot = image.randomnessProviderRotation();
+		camNode->rotate(camNode->getPosition() - lookAtVector, newRot);
+
+		camNode->lookAt(lookAtVector, Ogre::Node::TS_PARENT);
 
 		Ogre::Entity *ent = scnMgr->createEntity(meshName);
 		node->attachObject(ent);
 
-		renderTexture->update();
 
+		renderTexture->update();
 		renderTexture->writeContentsToFile(image.outputPath);
+
 
 		node->detachObject(ent);
 		scnMgr->destroyEntity(ent);
 
 		camNode->setPosition(initialCameraPosition);
-		camNode->lookAt(Ogre::Vector3(0, 0, -1), Ogre::Node::TS_PARENT);
+		camNode->resetOrientation();
+		camNode->lookAt(lookAtVector, Ogre::Node::TS_PARENT);
 	}
 
 	app.closeApp();
@@ -170,7 +178,7 @@ int main() {
 		.outputPath = "../rendered.png",
 		.width = 250,
 		.height = 250,
-		.randomnessProvider = [&generator] (const Ogre::Vector3& point) {
+		.randomnessProviderPosition = [&generator] (const Ogre::Vector3& point) {
 			std::normal_distribution<Ogre::Real> distributionX(point.x,25.0);
 			std::normal_distribution<Ogre::Real> distributionY(point.y,5.0);
 			std::normal_distribution<Ogre::Real> distributionZ(point.z,5.0);
@@ -179,6 +187,10 @@ int main() {
 				distributionY(generator),
 				distributionZ(generator)
 			);
+		},
+		.randomnessProviderRotation = [&generator] () {
+			std::normal_distribution<Ogre::Real> distributionAngle(0, 10);
+			return Ogre::Degree(distributionAngle(generator));
 		},
 	});
 	configurator.imagesConfigurations.emplace_back(SingleImageConfiguration {
