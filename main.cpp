@@ -48,6 +48,8 @@ void loadLocalMesh(const std::string& name, const std::string& path) {
 struct SingleImageConfiguration {
 	const std::string inputMesh = "../fish.mesh";
 	const std::string outputPath = "../rendered.png";
+	const Ogre::uint32 width;
+	const Ogre::uint32 height;
 };
 
 struct ProcessConfigurator {
@@ -86,23 +88,46 @@ void create(const ProcessConfigurator& configurator) {
 	// finally something to render
 	Ogre::SceneNode *node = scnMgr->getRootSceneNode()->createChildSceneNode();
 
-	Ogre::TexturePtr rttTexture = Ogre::TextureManager::getSingleton().createManual(
-		"RttTex",
-		Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME,
-		Ogre::TEX_TYPE_2D,
-		600, 600,
-		0,
-		Ogre::PF_R8G8B8,
-		Ogre::TU_RENDERTARGET);
-
-	Ogre::RenderTexture *renderTexture = rttTexture->getBuffer()->getRenderTarget();
-
-	renderTexture->addViewport(cam);
-	renderTexture->getViewport(0)->setClearEveryFrame(true);
-	renderTexture->getViewport(0)->setBackgroundColour(Ogre::ColourValue::Black);
-	renderTexture->getViewport(0)->setOverlaysEnabled(false);
+	Ogre::TexturePtr rttTexture;
+	Ogre::RenderTexture *renderTexture;
 
 	for(const auto& image : configurator.imagesConfigurations) {
+		bool rttChanged = false;
+
+		rttChanged = rttTexture.get() == nullptr;
+
+		if(!rttChanged && rttTexture->getWidth() != image.width) {
+			rttTexture->setWidth(image.width);
+			rttChanged = true;
+		}
+
+		if(!rttChanged && rttTexture->getHeight() != image.height) {
+			rttTexture->setWidth(image.height);
+			rttChanged = true;
+		}
+
+		if(rttChanged) {
+			if(rttTexture.get() != nullptr) {
+				Ogre::TextureManager::getSingleton().remove(rttTexture);
+			}
+
+			rttTexture = Ogre::TextureManager::getSingleton().createManual(
+				"RttTex",
+				Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME,
+				Ogre::TEX_TYPE_2D,
+				image.width, image.height,
+				0,
+				Ogre::PF_R8G8B8,
+				Ogre::TU_RENDERTARGET);
+
+			renderTexture = rttTexture->getBuffer()->getRenderTarget();
+
+			renderTexture->addViewport(cam);
+			renderTexture->getViewport(0)->setClearEveryFrame(true);
+			renderTexture->getViewport(0)->setBackgroundColour(Ogre::ColourValue::Black);
+			renderTexture->getViewport(0)->setOverlaysEnabled(false);
+		}
+
 		auto meshName = image.inputMesh;
 
 		if(!Ogre::MeshManager::getSingleton().resourceExists(meshName, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME)) {
@@ -127,15 +152,21 @@ int main() {
 	ProcessConfigurator configurator;
 	configurator.imagesConfigurations.emplace_back(SingleImageConfiguration {
 		.inputMesh = "../fish.mesh",
-		.outputPath = "../rendered.png"
+		.outputPath = "../rendered.png",
+		.width = 250,
+		.height = 250,
 	});
 	configurator.imagesConfigurations.emplace_back(SingleImageConfiguration {
 		.inputMesh = "../Sword.mesh",
-		.outputPath = "../rendered2.png"
+		.outputPath = "../rendered2.png",
+		.width = 300,
+		.height = 300,
 	});
 	configurator.imagesConfigurations.emplace_back(SingleImageConfiguration {
 		.inputMesh = "../Sinbad.mesh",
-		.outputPath = "../rendered3.png"
+		.outputPath = "../rendered3.png",
+		.width = 250,
+		.height = 250,
 	});
 
 	create(configurator);
