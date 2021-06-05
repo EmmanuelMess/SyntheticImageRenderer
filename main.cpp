@@ -9,7 +9,9 @@
 #include <OgreMeshManager.h>
 #include <OgreHardwarePixelBuffer.h>
 #include <OgreWindowEventUtilities.h>
+#include <OgreVector.h>
 #include <OgreMeshSerializer.h>
+#include <random>
 
 class SyntheticImageGenerator: public OgreBites::ApplicationContextBase {
 public:
@@ -50,6 +52,7 @@ struct SingleImageConfiguration {
 	const std::string outputPath = "../rendered.png";
 	const Ogre::uint32 width;
 	const Ogre::uint32 height;
+	const std::function< Ogre::Vector3 (const Ogre::Vector3& point) > randomnessProvider = [] (const Ogre::Vector3& point) { return point; };
 };
 
 struct ProcessConfigurator {
@@ -57,6 +60,8 @@ struct ProcessConfigurator {
 };
 
 void create(const ProcessConfigurator& configurator) {
+	const auto initialCameraPosition = Ogre::Vector3(0, 0, 15);
+
 	auto app = SyntheticImageGenerator();
 	app.initApp();
 
@@ -76,7 +81,7 @@ void create(const ProcessConfigurator& configurator) {
 
 	// also need to tell where we are
 	Ogre::SceneNode *camNode = scnMgr->getRootSceneNode()->createChildSceneNode();
-	camNode->setPosition(0, 0, 15);
+	camNode->setPosition(initialCameraPosition);
 	camNode->lookAt(Ogre::Vector3(0, 0, -1), Ogre::Node::TS_PARENT);
 
 	// create the camera
@@ -134,6 +139,10 @@ void create(const ProcessConfigurator& configurator) {
 			loadLocalMesh(meshName, image.inputMesh);
 		}
 
+		auto newPos = image.randomnessProvider(camNode->getPosition());
+		camNode->setPosition(newPos);
+		camNode->lookAt(Ogre::Vector3(0, 0, -1), Ogre::Node::TS_PARENT);
+
 		Ogre::Entity *ent = scnMgr->createEntity(meshName);
 		node->attachObject(ent);
 
@@ -143,21 +152,37 @@ void create(const ProcessConfigurator& configurator) {
 
 		node->detachObject(ent);
 		scnMgr->destroyEntity(ent);
+
+		camNode->setPosition(initialCameraPosition);
+		camNode->lookAt(Ogre::Vector3(0, 0, -1), Ogre::Node::TS_PARENT);
 	}
 
 	app.closeApp();
 }
 
 int main() {
+
+	std::default_random_engine generator(42);
+
 	ProcessConfigurator configurator;
 	configurator.imagesConfigurations.emplace_back(SingleImageConfiguration {
 		.inputMesh = "../fish.mesh",
 		.outputPath = "../rendered.png",
 		.width = 250,
 		.height = 250,
+		.randomnessProvider = [&generator] (const Ogre::Vector3& point) {
+			std::normal_distribution<Ogre::Real> distributionX(point.x,25.0);
+			std::normal_distribution<Ogre::Real> distributionY(point.y,5.0);
+			std::normal_distribution<Ogre::Real> distributionZ(point.z,5.0);
+			return Ogre::Vector3(
+				distributionX(generator),
+				distributionY(generator),
+				distributionZ(generator)
+			);
+		},
 	});
 	configurator.imagesConfigurations.emplace_back(SingleImageConfiguration {
-		.inputMesh = "../Sword.mesh",
+		.inputMesh = "../fish.mesh",
 		.outputPath = "../rendered2.png",
 		.width = 300,
 		.height = 300,
