@@ -31,5 +31,14 @@ configurator.imagesConfigurations.emplace_back(SingleImageConfiguration {
         std::normal_distribution<Ogre::Real> distributionAngle(0, 10);
         return Ogre::Degree(distributionAngle(generator));
     },
+    .postProcessing = [] (cv::Mat& image) {
+    	// Images have transparent backgrounds,
+    	// and allow for little customization,
+    	// use this if you want to change the result
+        cv::Mat mask;
+        inRange(image, cv::Scalar(0, 0, 0, 0), cv::Scalar(255, 255, 255, 0), mask);
+        image.setTo(cv::Scalar(0, 0, 0, 255), mask);
+        return image;
+    },
 });
 ```

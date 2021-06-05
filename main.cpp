@@ -1,3 +1,6 @@
+#include <opencv2/core/core.hpp>
+#include <opencv2/imgcodecs.hpp>
+
 #include <OgreRoot.h>
 #include <OgreRenderWindow.h>
 #include <OgreViewport.h>
@@ -11,6 +14,7 @@
 #include <OgreWindowEventUtilities.h>
 #include <OgreVector.h>
 #include <OgreMeshSerializer.h>
+
 #include <random>
 
 class SyntheticImageGenerator: public OgreBites::ApplicationContextBase {
@@ -54,11 +58,26 @@ struct SingleImageConfiguration {
 	const Ogre::uint32 height;
 	const std::function< Ogre::Vector3 (const Ogre::Vector3& point) > randomnessProviderPosition = [] (const Ogre::Vector3& point) { return point; };
 	const std::function< Ogre::Radian () > randomnessProviderRotation = [] () { return Ogre::Radian(); };
+	const std::function< cv::Mat (cv::Mat& image) > postProcessing = [] (cv::Mat& image) { return image; };
 };
 
 struct ProcessConfigurator {
 	std::vector<SingleImageConfiguration> imagesConfigurations;
 };
+
+cv::Mat getTextureMat(const Ogre::uint32 width, const Ogre::uint32 height, Ogre::RenderTexture *texture) {
+	Ogre::PixelFormat format = Ogre::PF_BYTE_BGRA;
+	size_t outBytesPerPixel = Ogre::PixelUtil::getNumElemBytes(format);
+	auto data = new unsigned char [width*height*outBytesPerPixel];
+
+	auto sourceBox = Ogre::Box(0, 0, texture->getWidth(), texture->getHeight());
+	auto destinationBox = Ogre::PixelBox(Ogre::Box(0, 0, width, height), format, data);
+	auto mat = cv::Mat(height, width, CV_8UC4, data);
+
+	texture->copyContentsToMemory(sourceBox, destinationBox);
+
+	return mat;
+}
 
 void create(const ProcessConfigurator& configurator) {
 	const auto initialCameraPosition = Ogre::Vector3(0, 0, 15);
@@ -124,14 +143,14 @@ void create(const ProcessConfigurator& configurator) {
 				Ogre::TEX_TYPE_2D,
 				image.width, image.height,
 				0,
-				Ogre::PF_R8G8B8,
+				Ogre::PF_R8G8B8A8,
 				Ogre::TU_RENDERTARGET);
 
 			renderTexture = rttTexture->getBuffer()->getRenderTarget();
 
 			renderTexture->addViewport(cam);
 			renderTexture->getViewport(0)->setClearEveryFrame(true);
-			renderTexture->getViewport(0)->setBackgroundColour(Ogre::ColourValue::Black);
+			renderTexture->getViewport(0)->setBackgroundColour(Ogre::ColourValue(0, 0, 0, 0));
 			renderTexture->getViewport(0)->setOverlaysEnabled(false);
 		}
 
@@ -154,8 +173,8 @@ void create(const ProcessConfigurator& configurator) {
 
 
 		renderTexture->update();
-		renderTexture->writeContentsToFile(image.outputPath);
-
+		auto mat = getTextureMat(image.width, image.height, renderTexture);
+		cv::imwrite(image.outputPath, image.postProcessing(mat));
 
 		node->detachObject(ent);
 		scnMgr->destroyEntity(ent);
@@ -192,6 +211,12 @@ int main() {
 			std::normal_distribution<Ogre::Real> distributionAngle(0, 10);
 			return Ogre::Degree(distributionAngle(generator));
 		},
+		.postProcessing = [] (cv::Mat& image) {
+			cv::Mat mask;
+			inRange(image, cv::Scalar(0, 0, 0, 0), cv::Scalar(255, 255, 255, 0), mask);
+			image.setTo(cv::Scalar(0, 0, 0, 255), mask);
+			return image;
+		},
 	});
 	configurator.imagesConfigurations.emplace_back(SingleImageConfiguration {
 		.inputMesh = "../fish.mesh",
@@ -204,6 +229,12 @@ int main() {
 		.outputPath = "../rendered3.png",
 		.width = 250,
 		.height = 250,
+		.postProcessing = [] (cv::Mat& image) {
+			cv::Mat mask;
+			inRange(image, cv::Scalar(0, 0, 0, 0), cv::Scalar(255, 255, 255, 0), mask);
+			image.setTo(cv::Scalar(0, 0, 255, 255), mask);
+			return image;
+		},
 	});
 
 	create(configurator);
