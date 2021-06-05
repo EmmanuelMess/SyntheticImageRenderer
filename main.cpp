@@ -228,8 +228,8 @@ int main() {
 	configurator.imagesConfigurations.emplace_back(SingleImageConfiguration {
 		.inputMesh = "../Sinbad.mesh",
 		.outputPath = "../rendered3.png",
-		.width = 250,
-		.height = 250,
+		.width = 1000,
+		.height = 1000,
 		.postProcessing = [] (cv::Mat& image) {
 			cv::Mat mask;
 			inRange(image, cv::Scalar(0, 0, 0, 0), cv::Scalar(255, 255, 255, 0), mask);
@@ -238,13 +238,16 @@ int main() {
 			cv::resize(
 				cv::imread("../custom_background.jpg"), //Image by Nathan Dumlao under CC0
 				backgroundImage,
-				cv::Size(250, 250),
+				cv::Size(1000, 1000),
 				0,0,
 				cv::INTER_CUBIC
 				);
 
 			cvtColor(backgroundImage, backgroundImage, cv::COLOR_BGR2BGRA);
 			backgroundImage.copyTo(image, mask);
+
+			// Super Sample Anti Aliasing (SSAA)
+			cv::resize(image,image,cv::Size(250, 250),0,0,cv::INTER_CUBIC);
 
 			return image;
 		},
