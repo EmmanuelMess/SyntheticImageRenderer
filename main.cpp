@@ -6,8 +6,10 @@
 #include <OgreEntity.h>
 #include <OgreApplicationContextBase.h>
 #include <OgrePrerequisites.h>
+#include <OgreMeshManager.h>
 #include <OgreHardwarePixelBuffer.h>
 #include <OgreWindowEventUtilities.h>
+#include <OgreMeshSerializer.h>
 
 class SyntheticImageGenerator: public OgreBites::ApplicationContextBase {
 public:
@@ -30,7 +32,23 @@ void SyntheticImageGenerator::setup()
 	mRoot->addFrameListener(this);
 }
 
+void loadLocalMesh(const std::string& name, const std::string& path) {
+	std::ifstream file (path.c_str(), std::ifstream::in | std::ifstream::binary);
+	if (!file) {
+		OGRE_EXCEPT(Ogre::Exception::ERR_FILE_NOT_FOUND, "File " + path + " not found.", "LocalMeshLoader");
+	}
+
+	Ogre::DataStreamPtr stream (OGRE_NEW Ogre::FileStreamDataStream (&file, false));
+	Ogre::MeshPtr mesh = Ogre::MeshManager::getSingleton().createManual(name, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME);
+
+	Ogre::MeshSerializer meshSerializer;
+	meshSerializer.importMesh(stream, mesh.get());
+}
+
 int main() {
+	auto inputMesh = "../fish.mesh";
+	auto outputPath = "../rendered.png";
+
 	auto app = SyntheticImageGenerator();
 	app.initApp();
 
@@ -60,7 +78,9 @@ int main() {
 	camNode->attachObject(cam);
 
 	// finally something to render
-	Ogre::Entity* ent = scnMgr->createEntity("Sinbad.mesh");
+	auto meshName = "LocalMesh";
+	loadLocalMesh(meshName, inputMesh);
+	Ogre::Entity* ent = scnMgr->createEntity(meshName);
 	Ogre::SceneNode* node = scnMgr->getRootSceneNode()->createChildSceneNode();
 	node->attachObject(ent);
 
@@ -82,7 +102,7 @@ int main() {
 
 	renderTexture->update();
 
-	renderTexture->writeContentsToFile("../rendered.png");
+	renderTexture->writeContentsToFile(outputPath);
 
 	app.closeApp();
 	return 0;
