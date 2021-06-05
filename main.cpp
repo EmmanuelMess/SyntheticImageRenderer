@@ -1,5 +1,6 @@
 #include <opencv2/core/core.hpp>
 #include <opencv2/imgcodecs.hpp>
+#include <opencv2/imgproc.hpp>
 
 #include <OgreRoot.h>
 #include <OgreRenderWindow.h>
@@ -232,7 +233,19 @@ int main() {
 		.postProcessing = [] (cv::Mat& image) {
 			cv::Mat mask;
 			inRange(image, cv::Scalar(0, 0, 0, 0), cv::Scalar(255, 255, 255, 0), mask);
-			image.setTo(cv::Scalar(0, 0, 255, 255), mask);
+
+			cv::Mat backgroundImage;
+			cv::resize(
+				cv::imread("../custom_background.jpg"), //Image by Nathan Dumlao under CC0
+				backgroundImage,
+				cv::Size(250, 250),
+				0,0,
+				cv::INTER_CUBIC
+				);
+
+			cvtColor(backgroundImage, backgroundImage, cv::COLOR_BGR2BGRA);
+			backgroundImage.copyTo(image, mask);
+
 			return image;
 		},
 	});
