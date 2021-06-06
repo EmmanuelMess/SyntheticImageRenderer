@@ -54,7 +54,7 @@ void loadLocalMesh(const std::string& name, const std::string& path) {
 
 struct SingleImageConfiguration {
 	const std::string inputMesh = "../fish.mesh";
-	const std::string outputPath = "../rendered.png";
+	const std::string outputPath = "";
 	const Ogre::uint32 width;
 	const Ogre::uint32 height;
 	const std::function< Ogre::Vector3 (const Ogre::Vector3& point) > randomnessProviderPosition = [] (const Ogre::Vector3& point) { return point; };
@@ -175,7 +175,10 @@ void create(const ProcessConfigurator& configurator) {
 
 		renderTexture->update();
 		auto mat = getTextureMat(image.width, image.height, renderTexture);
-		cv::imwrite(image.outputPath, image.postProcessing(mat));
+		auto postprocessed = image.postProcessing(mat);
+		if(!image.outputPath.empty()) {
+			cv::imwrite(image.outputPath, postprocessed);
+		}
 
 		node->detachObject(ent);
 		scnMgr->destroyEntity(ent);
@@ -250,6 +253,16 @@ int main() {
 			cv::resize(image,image,cv::Size(250, 250),0,0,cv::INTER_CUBIC);
 
 			return image;
+		},
+	});
+	configurator.imagesConfigurations.emplace_back(SingleImageConfiguration {
+		.inputMesh = "../Sinbad.mesh",
+		.width = 250,
+		.height = 250,
+		.postProcessing = [] (cv::Mat& image) {
+			// You can do processing here,
+			// without the image being written to disk afterwards
+			return cv::Mat();
 		},
 	});
 

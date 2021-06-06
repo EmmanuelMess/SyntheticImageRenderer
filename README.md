@@ -11,7 +11,7 @@ std::default_random_engine generator(42);
 ProcessConfigurator configurator;
 configurator.imagesConfigurations.emplace_back(SingleImageConfiguration {
     .inputMesh = "../fish.mesh", //path to mesh
-    .outputPath = "../rendered.png", //image name
+    .outputPath = "../rendered.png", //image name, if it is "" then no image is created
     .width = 250, //image width
     .height = 250, //image height
     .randomnessProviderPosition = [&generator] (const Ogre::Vector3& point) { 
