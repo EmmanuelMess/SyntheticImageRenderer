@@ -81,8 +81,8 @@ cv::Mat getTextureMat(const Ogre::uint32 width, const Ogre::uint32 height, Ogre:
 }
 
 void create(const ProcessConfigurator& configurator) {
-	const auto initialCameraPosition = Ogre::Vector3(0, 0, 15);
-	const auto lookAtVector = Ogre::Vector3(0, 0, -1);
+	auto initialCameraPosition = Ogre::Vector3(0, 0, 15);
+	auto lookAtVector = Ogre::Vector3(0, 0, -1);
 
 	auto app = SyntheticImageGenerator();
 	app.initApp();
@@ -155,16 +155,16 @@ void create(const ProcessConfigurator& configurator) {
 			renderTexture->getViewport(0)->setOverlaysEnabled(false);
 		}
 
-		auto meshName = image.inputMesh;
+		const auto &meshName = image.inputMesh;
 
 		if(!Ogre::MeshManager::getSingleton().resourceExists(meshName, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME)) {
 			loadLocalMesh(meshName, image.inputMesh);
 		}
 
-		auto newPos = image.randomnessProviderPosition(camNode->getPosition());
+		const auto& newPos = image.randomnessProviderPosition(camNode->getPosition());
 		camNode->setPosition(newPos);
 
-		auto newRot = image.randomnessProviderRotation();
+		const auto& newRot = image.randomnessProviderRotation();
 		camNode->rotate(camNode->getPosition() - lookAtVector, newRot);
 
 		camNode->lookAt(lookAtVector, Ogre::Node::TS_PARENT);
@@ -175,7 +175,7 @@ void create(const ProcessConfigurator& configurator) {
 
 		renderTexture->update();
 		auto mat = getTextureMat(image.width, image.height, renderTexture);
-		auto postprocessed = image.postProcessing(mat);
+		const auto& postprocessed = image.postProcessing(mat);
 		if(!image.outputPath.empty()) {
 			cv::imwrite(image.outputPath, postprocessed);
 		}
